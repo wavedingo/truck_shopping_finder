@@ -4,15 +4,20 @@ import pytest
 from scrapers.cargurus import parse_listing_card
 
 # Fixture HTML matching the selectors in parse_listing_card.
-# CarGurus uses data-testid attributes for stability.
+# CarGurus migrated to a Remix /search SRP in 2025 (updated fixture 2026-05).
 FIXTURE_HTML = """
-<div data-testid="listing-card">
-  <a data-testid="car-blade-link" href="/Cars/new/nl_New_d2417_z18301?listing=123">
-    2021 Toyota Tacoma SR5
+<div data-testid="srp-listing-tile">
+  <a data-testid="car-blade-link" href="/details/123456?zip=18301">
+    <div>
+      <h5 class="_title_84nkk_1">2021 Toyota Tacoma SR5</h5>
+      <h4 class="_priceText_fjflh_1">$34,995</h4>
+      <p class="_mileage_84nkk_9">22,000 mi</p>
+      <div class="_locationSectionWithIcon_eclgi_13">
+        <div class="_textEllipsis_eclgi_8">Stroudsburg, PA</div>
+        <div class="_textEllipsis_eclgi_8">5 mi away</div>
+      </div>
+    </div>
   </a>
-  <span data-testid="price">$34,995</span>
-  <span data-testid="mileage">22,000 mi</span>
-  <span data-testid="seller-location">Stroudsburg, PA</span>
 </div>
 """
 

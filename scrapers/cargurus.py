@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.cargurus.com"
 
-# CarGurus uses data-testid attributes which are more stable than class names.
+# CarGurus updated their SRP in 2025 to a Remix-based /search page.
+# Selectors confirmed against live site 2026-05.
 # If scraping returns 0 results, inspect the live site and update these.
-CARD_SELECTOR = "div[data-testid='listing-card'], div[data-listing-id]"
-TITLE_SELECTOR = "a[data-testid='car-blade-link'], a[data-testid='listing-title']"
-PRICE_SELECTOR = "span[data-testid='price'], div[data-testid='listing-price']"
-MILEAGE_SELECTOR = "span[data-testid='mileage']"
-LOCATION_SELECTOR = "span[data-testid='seller-location']"
+CARD_SELECTOR = "div[data-testid='srp-listing-tile']"
+TITLE_SELECTOR = "h5[class*='_title_']"
+PRICE_SELECTOR = "h4[class*='_priceText_']"
+MILEAGE_SELECTOR = "p[class*='_mileage_']"
+LOCATION_SELECTOR = "div[class*='_locationSectionWithIcon_'] div[class*='_textEllipsis_']"
 
 
 def _parse_int(text: str) -> Optional[int]:
@@ -48,7 +49,12 @@ def parse_listing_card(card_html: str) -> Optional[Listing]:
         return None
 
     title = title_el.get_text(strip=True)
+
+    # URL may be on the title element itself or on a dedicated link element.
     href = title_el.get("href", "")
+    if not href:
+        link_el = soup.select_one("a[data-testid='car-blade-link'], a[href*='/details/']")
+        href = link_el.get("href", "") if link_el else ""
     url = urljoin(BASE_URL, href) if href else None
     if not url:
         return None
@@ -82,17 +88,23 @@ def parse_listing_card(card_html: str) -> Optional[Listing]:
 class CarGurusScraper(BaseScraper):
     SITE_NAME = "cargurus.com"
 
+    # CarGurus entity IDs for Toyota Tacoma (standard + Hybrid trim paths).
+    # m7 = Toyota make, d311 = Tacoma, d3428 = Tacoma Hybrid.
+    # These are stable integer IDs assigned by CarGurus; update if the model
+    # entity changes (e.g. a new generation gets a new ID).
+    CG_TACOMA_TRIM_PATHS = "m7/d311,m7/d3428"
+
     def _build_url(self, make: str, model: str, page: int) -> str:
-        offset = (page - 1) * 15
-        make_encoded = make.lower().replace(" ", "+")
-        model_encoded = model.lower().replace(" ", "+")
+        # CarGurus migrated from /Cars/listings/searchResults.action to /search in 2025.
+        # The new endpoint uses makeModelTrimPaths (entity IDs) and page-based pagination.
         return (
-            f"{BASE_URL}/Cars/listings/searchResults.action"
-            f"?zip={self.zip_code}&distance={self.radius}"
-            f"&entitySelectingHelper.selectedEntity2={make_encoded}+{model_encoded}"
+            f"{BASE_URL}/search"
+            f"?makeModelTrimPaths={self.CG_TACOMA_TRIM_PATHS.replace('/', '%2F').replace(',', '%2C')}"
+            f"&distance={self.radius}&zip={self.zip_code}"
             f"&maxPrice={self.max_price}&maxMileage={self.max_mileage}"
             f"&startYear={self.year_min}&endYear={self.year_max}"
-            f"&offset={offset}&sortDir=ASC&sortType=PRICE"
+            f"&sortDirection=ASC&sortType=PRICE"
+            + (f"&page={page}" if page > 1 else "")
         )
 
     async def _scrape_pages(self, page, make: str, model: str) -> tuple[list, list[str], int]:

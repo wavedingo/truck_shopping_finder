@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.cars.com"
 
-# These selectors match Cars.com's current listing card structure.
+# These selectors match Cars.com's current listing card structure (updated 2026-05).
+# Cars.com now uses custom Web Components (<fuse-card>) with data-listing-id attributes.
 # If scraping returns 0 results, inspect the live site and update these.
-CARD_SELECTOR = "div.vehicle-card"
-TITLE_SELECTOR = "h2.title a, a.vehicle-card-link"
-PRICE_SELECTOR = "span.primary-price"
-MILEAGE_SELECTOR = "div.mileage"
-LOCATION_SELECTOR = "div.vehicle-card-location"
+CARD_SELECTOR = "fuse-card[data-listing-id]"
+TITLE_SELECTOR = "h2 a"
+PRICE_SELECTOR = "span.fuse-body-larger"
+MILEAGE_SELECTOR = "div.datum-icon.mileage span"
+LOCATION_SELECTOR = "div[slot='footer'] div.datum-icon span"
 
 
 def _parse_int(text: str) -> Optional[int]:
