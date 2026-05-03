@@ -89,7 +89,7 @@ async def main(args):
     all_errors: list = []
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=False)
 
         coros = [
             _run_one(scraper, make, model, browser, db, run_ts)
