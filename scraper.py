@@ -146,7 +146,6 @@ async def main(args):
                 new_listings=new_listings,
                 price_changes=price_changes,
                 site_stats=stats,
-                credentials_path=DEFAULTS["gmail_credentials_path"],
                 token_path=DEFAULTS["gmail_token_path"],
             )
             logger.info("Email digest sent.")

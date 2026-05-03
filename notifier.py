@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import html as html_lib
 import logging
 import os
 from datetime import datetime, timezone
@@ -42,12 +43,12 @@ def build_email_html(new_listings: list, price_changes: list, site_stats: dict) 
 
     if new_listings:
         rows_html = "".join(
-            f"<tr><td>{r['site']}</td>"
-            f"<td><a href='{r['url']}'>{r['title']}</a></td>"
+            f"<tr><td>{html_lib.escape(str(r['site']))}</td>"
+            f"<td><a href='{html_lib.escape(str(r['url']), quote=True)}'>{html_lib.escape(str(r['title']))}</a></td>"
             f"<td>{r['year'] or ''}</td>"
             f"<td>{_fmt_price(r['price'])}</td>"
             f"<td>{_fmt_mileage(r['mileage'])}</td>"
-            f"<td>{r['location'] or ''}</td></tr>"
+            f"<td>{html_lib.escape(str(r['location'] or ''))}</td></tr>"
             for r in new_listings
         )
         sections.append(
@@ -60,8 +61,8 @@ def build_email_html(new_listings: list, price_changes: list, site_stats: dict) 
 
     if price_changes:
         rows_html = "".join(
-            f"<tr><td>{r['site']}</td>"
-            f"<td><a href='{r['url']}'>{r['title']}</a></td>"
+            f"<tr><td>{html_lib.escape(str(r['site']))}</td>"
+            f"<td><a href='{html_lib.escape(str(r['url']), quote=True)}'>{html_lib.escape(str(r['title']))}</a></td>"
             f"<td>{_fmt_price(r['previous_price'])} → {_fmt_price(r['price'])}</td></tr>"
             for r in price_changes
         )
@@ -73,7 +74,7 @@ def build_email_html(new_listings: list, price_changes: list, site_stats: dict) 
         )
 
     footer_rows = "".join(
-        f"<tr><td>{site}</td><td>{s['new']}</td><td>{s['changes']}</td>"
+        f"<tr><td>{html_lib.escape(site)}</td><td>{s['new']}</td><td>{s['changes']}</td>"
         f"<td>{s['pages']}</td>"
         f"<td style='color:{_status_color(s['status'])}'>"
         f"{s['status']}</td></tr>"
@@ -95,7 +96,6 @@ def send_digest(
     new_listings: list,
     price_changes: list,
     site_stats: dict,
-    credentials_path: str,
     token_path: str,
     recipient: Optional[str] = None,
 ):
@@ -104,6 +104,11 @@ def send_digest(
     from googleapiclient.discovery import build as build_service
 
     token_path = os.path.expanduser(token_path)
+    if not Path(token_path).exists():
+        raise FileNotFoundError(
+            f"Gmail token not found at {token_path}. "
+            "Run setup_gmail.py first to authorize."
+        )
     creds = Credentials.from_authorized_user_file(
         token_path,
         scopes=["https://www.googleapis.com/auth/gmail.send"],
