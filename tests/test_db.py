@@ -130,6 +130,14 @@ def test_finish_run_persists_stats(tmp_db):
     assert "err" in row["errors"]
 
 
+def test_get_new_listings_returns_rows_for_run_ts(tmp_db):
+    run_ts = "2026-05-02T07:00:00+00:00"
+    tmp_db.upsert_listing(make_listing(), run_ts)
+    rows = tmp_db.get_new_listings(run_ts)
+    assert len(rows) == 1
+    assert rows[0]["title"] == "2020 Toyota Tacoma SR5"
+
+
 def test_get_price_changes_returns_changed_rows(tmp_db):
     run_ts = "2026-05-02T07:00:00+00:00"
     tmp_db.upsert_listing(make_listing(price=32000), run_ts)

@@ -162,6 +162,11 @@ class Database:
         )
         self.conn.commit()
 
+    def get_new_listings(self, run_ts: str) -> list:
+        return self.conn.execute(
+            "SELECT * FROM listings WHERE first_seen = ?", (run_ts,)
+        ).fetchall()
+
     def get_price_changes(self, since_ts: str) -> list:
         return self.conn.execute(
             "SELECT * FROM listings WHERE price_changed_at >= ?", (since_ts,)

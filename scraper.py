@@ -40,6 +40,13 @@ def build_summary_table(stats: dict) -> str:
     return tabulate(rows, headers=["Site", "New", "Price Changes", "Pages", "Status"])
 
 
+_STATUS_PRIORITY = {"FAILED": 2, "WARN": 1, "OK": 0}
+
+def _merge_status(current: str, new: str) -> str:
+    """Only degrade status, never upgrade (FAILED > WARN > OK)."""
+    return new if _STATUS_PRIORITY.get(new, 0) > _STATUS_PRIORITY.get(current, 0) else current
+
+
 async def _run_one(scraper, make, model, browser, db, run_ts):
     listings, errors, pages = await scraper.scrape(make, model, browser)
     new_count = change_count = 0
@@ -101,7 +108,7 @@ async def main(args):
             if site not in stats:
                 stats[site] = {"new": 0, "changes": 0, "pages": 0, "status": "OK"}
             if isinstance(result, Exception):
-                stats[site]["status"] = "FAILED"
+                stats[site]["status"] = _merge_status(stats[site]["status"], "FAILED")
                 all_errors.append(f"[{site}] {make} {model}: {result}")
                 logger.error(f"[{site}] {make} {model} failed: {result}")
             else:
@@ -110,7 +117,7 @@ async def main(args):
                 stats[site]["changes"] += change_count
                 stats[site]["pages"] += pages
                 if errors:
-                    stats[site]["status"] = "WARN"
+                    stats[site]["status"] = _merge_status(stats[site]["status"], "WARN")
                     all_errors.extend(errors)
 
         await browser.close()
@@ -132,9 +139,7 @@ async def main(args):
     logger.info(f"Run complete: {total_new} new, {total_changes} price changes")
 
     if total_new > 0 or total_changes > 0:
-        new_listings = db.conn.execute(
-            "SELECT * FROM listings WHERE first_seen = ?", (run_ts,)
-        ).fetchall()
+        new_listings = db.get_new_listings(run_ts)
         price_changes = db.get_price_changes(run_ts)
         try:
             send_digest(
@@ -162,7 +167,10 @@ def parse_args():
     parser.add_argument("--db-path", default=DEFAULTS["db_path"], dest="db_path")
     parser.add_argument("--csv-path", default=DEFAULTS["csv_path"], dest="csv_path")
     parser.add_argument("--log-path", default=DEFAULTS["log_path"], dest="log_path")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if bool(args.make) != bool(args.model):
+        parser.error("--make and --model must be used together")
+    return args
 
 
 if __name__ == "__main__":
