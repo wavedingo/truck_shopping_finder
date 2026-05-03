@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import abc
 import asyncio
 import random
+
+from playwright_stealth import stealth_async
 
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -28,7 +31,7 @@ def rotate_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
 
-async def random_delay():
+async def random_delay() -> None:
     await asyncio.sleep(random.uniform(2.0, 4.0))
 
 
@@ -39,7 +42,8 @@ def detect_block(title: str, body_text: str) -> bool:
     return len(body_text.strip()) < 100
 
 
-class BaseScraper:
+class BaseScraper(abc.ABC):
+    # Subclasses must set SITE_NAME to the site's display name (e.g. "cars.com")
     SITE_NAME = "base"
 
     def __init__(self, zip_code: str, radius: int, year_min: int, year_max: int,
@@ -54,8 +58,6 @@ class BaseScraper:
 
     async def scrape(self, make: str, model: str, browser) -> tuple[list, list[str], int]:
         """Returns (listings, errors, pages_fetched)."""
-        from playwright_stealth import stealth_async
-
         context = await browser.new_context(
             user_agent=rotate_user_agent(),
             viewport={"width": random.randint(1280, 1440), "height": random.randint(800, 900)},
@@ -68,5 +70,6 @@ class BaseScraper:
         finally:
             await context.close()
 
+    @abc.abstractmethod
     async def _scrape_pages(self, page, make: str, model: str) -> tuple[list, list[str], int]:
-        raise NotImplementedError
+        ...
