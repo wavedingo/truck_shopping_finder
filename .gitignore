@@ -1,0 +1,7 @@
+credentials.json
+data/*.db
+data/*.csv
+scraper.log
+__pycache__/
+*.pyc
+.pytest_cache/

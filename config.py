@@ -17,5 +17,4 @@ DEFAULTS = {
     "csv_path": "data/listings.csv",
     "log_path": "scraper.log",
     "gmail_token_path": "~/.config/truck_finder/token.json",
-    "gmail_credentials_path": "credentials.json",
 }

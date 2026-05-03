@@ -88,7 +88,7 @@ class AutoTraderScraper(BaseScraper):
         first_record = (page - 1) * 25
         return (
             f"{BASE_URL}/cars-for-sale/used-cars/{make_slug}/{model_slug}"
-            f"/east-stroudsburg-pa-{self.zip_code}"
+            f"/{self.zip_code}"
             f"?maxPrice={self.max_price}&maxMileage={self.max_mileage}"
             f"&startYear={self.year_min}&endYear={self.year_max}"
             f"&searchRadius={self.radius}&firstRecord={first_record}"

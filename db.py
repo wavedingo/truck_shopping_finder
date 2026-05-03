@@ -143,9 +143,10 @@ class Database:
                     "url": row["url"], "date_scraped": row["first_seen"],
                 })
 
-    def start_run(self) -> int:
-        now = datetime.now(timezone.utc).isoformat()
-        cursor = self.conn.execute("INSERT INTO runs (started_at) VALUES (?)", (now,))
+    def start_run(self, run_ts: str) -> int:
+        cursor = self.conn.execute(
+            "INSERT INTO runs (started_at) VALUES (?)", (run_ts,)
+        )
         self.conn.commit()
         return cursor.lastrowid
 

@@ -114,12 +114,12 @@ def test_export_csv_excludes_earlier_runs(tmp_db, tmp_path):
 
 
 def test_start_run_returns_int(tmp_db):
-    run_id = tmp_db.start_run()
+    run_id = tmp_db.start_run("2026-01-01T07:00:00+00:00")
     assert isinstance(run_id, int)
 
 
 def test_finish_run_persists_stats(tmp_db):
-    run_id = tmp_db.start_run()
+    run_id = tmp_db.start_run("2026-01-01T07:00:00+00:00")
     tmp_db.finish_run(run_id, sites=["cars.com"], new=5, changes=2, errors=["err"])
     row = tmp_db.conn.execute(
         "SELECT new_listings_found, price_changes_found, errors FROM runs WHERE id = ?",

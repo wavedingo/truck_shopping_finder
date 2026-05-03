@@ -66,8 +66,8 @@ async def main(args):
     make_models = [(args.make, args.model)] if (args.make and args.model) else DEFAULTS["make_models"]
 
     db = Database(args.db_path)
-    run_id = db.start_run()
     run_ts = datetime.now(timezone.utc).isoformat()
+    run_id = db.start_run(run_ts)
     logger.info(f"Run started: {run_ts}")
 
     scraper_kwargs = dict(
