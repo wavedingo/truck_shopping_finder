@@ -84,14 +84,14 @@ def test_url_dedup_when_no_vin(tmp_db):
     assert result == "existing"
 
 
-def test_title_mileage_dedup_when_no_vin_no_url(tmp_db):
+def test_title_mileage_dedup_detects_price_change(tmp_db):
     run_ts = "2026-05-02T07:00:00+00:00"
     listing = make_listing(vin=None, url="https://cars.com/abc")
     tmp_db.upsert_listing(listing, run_ts)
-    # Change URL to force fingerprint fallback, keep same title+mileage
+    # Different URL forces title+mileage fallback; price changed so expect price_changed
     listing2 = make_listing(vin=None, url="https://cars.com/xyz", price=30000)
     result = tmp_db.upsert_listing(listing2, run_ts)
-    assert result in ("existing", "price_changed")
+    assert result == "price_changed"
 
 
 def test_export_csv_contains_new_listings(tmp_db, tmp_path):
@@ -137,3 +137,4 @@ def test_get_price_changes_returns_changed_rows(tmp_db):
     changes = tmp_db.get_price_changes(run_ts)
     assert len(changes) == 1
     assert changes[0]["price"] == 30000
+    assert changes[0]["price_changed_at"] == run_ts  # verify deterministic timestamp

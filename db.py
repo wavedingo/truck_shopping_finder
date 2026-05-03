@@ -70,29 +70,27 @@ class Database:
 
     def upsert_listing(self, listing: Listing, run_ts: str) -> str:
         """Returns 'new', 'existing', or 'price_changed'."""
-        now = datetime.now(timezone.utc).isoformat()
-
         if listing.vin:
             row = self.conn.execute(
                 "SELECT id, price FROM listings WHERE vin = ?", (listing.vin,)
             ).fetchone()
             if row:
-                return self._handle_existing(row, listing, now)
+                return self._handle_existing(row, listing, run_ts)
 
         if listing.url:
             row = self.conn.execute(
                 "SELECT id, price FROM listings WHERE url = ?", (listing.url,)
             ).fetchone()
             if row:
-                return self._handle_existing(row, listing, now)
+                return self._handle_existing(row, listing, run_ts)
 
         if listing.title and listing.mileage:
             row = self.conn.execute(
-                "SELECT id, price FROM listings WHERE title = ? AND mileage = ?",
-                (listing.title, listing.mileage),
+                "SELECT id, price FROM listings WHERE title = ? AND mileage = ? AND site = ?",
+                (listing.title, listing.mileage, listing.site),
             ).fetchone()
             if row:
-                return self._handle_existing(row, listing, now)
+                return self._handle_existing(row, listing, run_ts)
 
         self.conn.execute(
             """
@@ -103,12 +101,12 @@ class Database:
             """,
             (listing.site, listing.title, listing.year, listing.make, listing.model,
              listing.price, listing.mileage, listing.location, listing.url,
-             listing.vin, run_ts, now),
+             listing.vin, run_ts, run_ts),
         )
         self.conn.commit()
         return "new"
 
-    def _handle_existing(self, row: sqlite3.Row, listing: Listing, now: str) -> str:
+    def _handle_existing(self, row: sqlite3.Row, listing: Listing, run_ts: str) -> str:
         if listing.price is not None and row["price"] != listing.price:
             self.conn.execute(
                 """
@@ -116,12 +114,12 @@ class Database:
                 SET price = ?, previous_price = ?, price_changed_at = ?, last_seen = ?
                 WHERE id = ?
                 """,
-                (listing.price, row["price"], now, now, row["id"]),
+                (listing.price, row["price"], run_ts, run_ts, row["id"]),
             )
             self.conn.commit()
             return "price_changed"
         self.conn.execute(
-            "UPDATE listings SET last_seen = ? WHERE id = ?", (now, row["id"])
+            "UPDATE listings SET last_seen = ? WHERE id = ?", (run_ts, row["id"])
         )
         self.conn.commit()
         return "existing"
