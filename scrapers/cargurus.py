@@ -18,6 +18,17 @@ BASE_URL = "https://www.cargurus.com"
 # Selectors confirmed against live site 2026-05.
 # If scraping returns 0 results, inspect the live site and update these.
 CARD_SELECTOR = "div[data-testid='srp-listing-tile']"
+
+# Map (make_lower, model_lower) -> CarGurus makeModelTrimPaths value.
+# Format: URL-encoded "mX/dY" where mX = make entity ID, dY = model entity ID.
+# Multiple paths (comma-separated, encoded as %2C) include variant models.
+# IDs confirmed against live site 2026-05.
+CG_ENTITY_MAP = {
+    ("toyota", "tacoma"): "m7%2Fd311%2Cm7%2Fd3428",   # Tacoma + Tacoma Hybrid
+    ("toyota", "4runner"): "m7%2Fd290",
+    ("chevrolet", "colorado"): "m1%2Fd614",
+}
+
 TITLE_SELECTOR = "h5[class*='_title_']"
 PRICE_SELECTOR = "h4[class*='_priceText_']"
 MILEAGE_SELECTOR = "p[class*='_mileage_']"
@@ -88,18 +99,17 @@ def parse_listing_card(card_html: str) -> Optional[Listing]:
 class CarGurusScraper(BaseScraper):
     SITE_NAME = "cargurus.com"
 
-    # CarGurus entity IDs for Toyota Tacoma (standard + Hybrid trim paths).
-    # m7 = Toyota make, d311 = Tacoma, d3428 = Tacoma Hybrid.
-    # These are stable integer IDs assigned by CarGurus; update if the model
-    # entity changes (e.g. a new generation gets a new ID).
-    CG_TACOMA_TRIM_PATHS = "m7/d311,m7/d3428"
-
     def _build_url(self, make: str, model: str, page: int) -> str:
         # CarGurus migrated from /Cars/listings/searchResults.action to /search in 2025.
         # The new endpoint uses makeModelTrimPaths (entity IDs) and page-based pagination.
+        key = (make.lower(), model.lower())
+        trim_paths = CG_ENTITY_MAP.get(key)
+        if not trim_paths:
+            logger.warning(f"[cargurus] No entity ID mapping for {make} {model}, skipping")
+            return ""
         return (
             f"{BASE_URL}/search"
-            f"?makeModelTrimPaths={self.CG_TACOMA_TRIM_PATHS.replace('/', '%2F').replace(',', '%2C')}"
+            f"?makeModelTrimPaths={trim_paths}"
             f"&distance={self.radius}&zip={self.zip_code}"
             f"&maxPrice={self.max_price}&maxMileage={self.max_mileage}"
             f"&startYear={self.year_min}&endYear={self.year_max}"
@@ -112,6 +122,9 @@ class CarGurusScraper(BaseScraper):
 
         for page_num in range(1, self.max_pages + 1):
             url = self._build_url(make, model, page_num)
+            if not url:
+                logger.info(f"[cargurus] Skipping {make} {model} — no entity ID mapping")
+                break
             logger.info(f"[cargurus] {make} {model} p{page_num}: {url}")
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
