@@ -89,7 +89,7 @@ async def main(args):
     all_errors: list = []
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(channel="chrome", headless=False)
 
         coros = [
             _run_one(scraper, make, model, browser, db, run_ts)
@@ -122,7 +122,8 @@ async def main(args):
 
         await browser.close()
 
-    db.export_new_listings_csv(run_ts, args.csv_path, sort_by=args.sort)
+    csv_path = args.csv_path or f"data/listings_{run_ts[:10]}.csv"
+    db.export_new_listings_csv(run_ts, csv_path, sort_by=args.sort)
 
     total_new = sum(s["new"] for s in stats.values())
     total_changes = sum(s["changes"] for s in stats.values())
@@ -164,7 +165,7 @@ def parse_args():
     parser.add_argument("--radius", type=int, default=DEFAULTS["radius"])
     parser.add_argument("--sort", choices=["price", "mileage"], default=None)
     parser.add_argument("--db-path", default=DEFAULTS["db_path"], dest="db_path")
-    parser.add_argument("--csv-path", default=DEFAULTS["csv_path"], dest="csv_path")
+    parser.add_argument("--csv-path", default=None, dest="csv_path")
     parser.add_argument("--log-path", default=DEFAULTS["log_path"], dest="log_path")
     args = parser.parse_args()
     if bool(args.make) != bool(args.model):
